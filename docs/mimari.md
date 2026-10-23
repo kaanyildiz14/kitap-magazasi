@@ -1,4 +1,4 @@
-# Mimari ve Yol Haritası
+# Mimari
 
 Bu doküman projenin **neden** böyle kurulduğunu anlatır. Kodu okurken "bu neden burada?" diye sorduğunda cevabı burada bulmalısın. Her karar kısa bir gerekçeyle yazıldı; ileride değiştirmek istersen neyi göze aldığını bilerek değiştirebilirsin.
 
@@ -26,14 +26,16 @@ kitap-magazasi/
 
 **Neden tek repo (monorepo)?** API ve arayüz birlikte değişir: yeni bir alan eklediğinde ikisini tek commit'te güncellersin, CI ikisini birlikte test eder. npm workspaces ek araç gerektirmeden bunu sağlar.
 
-## Aşamalar
+## Geliştirme Süreci
 
-| Aşama | İçerik | Durum |
-|---|---|---|
-| 1 | Monorepo yapısı, üyelik/giriş (JWT), roller, siparişler, sayfalama | ✅ |
-| 2 | Next.js arayüz: katalog, arama, sepet, giriş, siparişlerim, admin paneli | ✅ |
-| 3 | Canlı yayın: `kitap.uranusyazilim.com` (API + veritabanı + arayüz) | ⏳ |
-| 4 | OpenAPI dokümantasyonu, uçtan uca testler (Playwright) | ⏳ |
+Proje iki aşamada geliştirildi; her aşamanın ayrıntıları ve öğrenme notları PR açıklamalarında:
+
+| Aşama | İçerik |
+|---|---|
+| [#1](https://github.com/kaanyildiz14/kitap-magazasi/pull/1) | Monorepo yapısı, üyelik/giriş (JWT), roller, transaction'lı siparişler, sayfalama |
+| [#2](https://github.com/kaanyildiz14/kitap-magazasi/pull/2) | Next.js arayüz: raf vitrini, katalog, arama, sepet, sipariş geçmişi, admin paneli |
+
+**Olası geliştirmeler** (kapsam dışı bırakıldı): canlı yayın (Cloudflare Workers + Neon PostgreSQL), OpenAPI dokümantasyonu, Playwright ile uçtan uca tarayıcı testleri, kitap kapak görselleri.
 
 ## Veri Modeli
 

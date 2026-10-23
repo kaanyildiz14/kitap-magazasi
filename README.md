@@ -147,7 +147,7 @@ apps/api/
     ├── entegrasyon/           # Gerçek PostgreSQL testleri
     └── *.test.ts
 db/schema.sql                  # Tablolar, kısıtlar, örnek veriler
-docs/mimari.md                 # Mimari kararlar ve yol haritası
+docs/mimari.md                 # Mimari kararlar ve gerekçeleri
 ```
 
 ## 📄 Lisans
