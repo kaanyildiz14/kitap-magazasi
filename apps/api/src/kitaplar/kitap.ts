@@ -20,11 +20,21 @@ export const kitapOlusturSemasi = kitapAlanlari.extend({ stok: kitapAlanlari.sha
 // Varsayılan değer içermemeli: gönderilmeyen alanlar güncellenmez
 export const kitapGuncelleSemasi = kitapAlanlari.partial();
 
-export const satisSemasi = z.object({
-  adet: z.number().int().positive('Adet en az 1 olmalı').default(1),
+export const kitapListeSemasi = z.object({
+  arama: z.string().trim().max(100).optional(),
+  sayfa: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const idSemasi = z.coerce.number().int().positive();
 
 export type KitapOlustur = z.infer<typeof kitapOlusturSemasi>;
 export type KitapGuncelle = z.infer<typeof kitapGuncelleSemasi>;
+export type KitapListeSorgusu = z.infer<typeof kitapListeSemasi>;
+
+export interface Sayfa<T> {
+  veriler: T[];
+  toplam: number;
+  sayfa: number;
+  limit: number;
+}

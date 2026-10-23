@@ -1,4 +1,4 @@
-# 📚 Kitap Mağazası API
+# 📚 Kitap Mağazası
 
 [![CI](https://github.com/kaanyildiz14/kitap-magazasi-api/actions/workflows/ci.yml/badge.svg)](https://github.com/kaanyildiz14/kitap-magazasi-api/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
@@ -6,49 +6,76 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Lisans](https://img.shields.io/badge/lisans-MIT-green)
 
-Bir kitap mağazasının stok ve satış işlemlerini yöneten REST API. Express 5 ve TypeScript ile yazıldı, veriler PostgreSQL'de tutuluyor.
+Bir kitap mağazasının üyelik, katalog, stok ve sipariş süreçlerini yöneten full-stack uygulama. Bu repo şu an **REST API**'yi içeriyor; Next.js arayüzü yolda ([yol haritası](docs/mimari.md#aşamalar)).
 
-## ✨ Özellikler
+> Projenin neden böyle kurulduğunu, her kararın gerekçesini ve alternatiflerini **[docs/mimari.md](docs/mimari.md)** anlatıyor.
 
-- Kitaplar için tam **CRUD** (listeleme, arama, ekleme, kısmi güncelleme, silme)
-- **Güvenli satış:** Stok kontrolü ve düşme işlemi tek bir atomik SQL sorgusunda yapılır, eşzamanlı isteklerde stok eksiye düşmez
-- **Doğrulama:** [Zod](https://zod.dev) ile istek gövdesi ve parametre doğrulama, alan bazlı hata mesajları
-- **Katmanlı mimari:** Router → Repository arayüzü → PostgreSQL. Testler veritabanı olmadan bellekte çalışır
-- Merkezi hata yönetimi ve tutarlı JSON hata formatı
-- Docker Compose ile tek komutla veritabanı kurulumu
-- GitHub Actions ile her push'ta tip kontrolü, test ve build
+## ✨ Öne Çıkanlar
 
-## 🔌 API Uç Noktaları
+- **Güvenli sipariş:** Çok kalemli sipariş tek transaction'da işlenir; satırlar `SELECT … FOR UPDATE` ile kilitlenir. Aynı anda gelen 20 siparişin stoğu eksiye düşürmediği gerçek PostgreSQL'e karşı test ediliyor.
+- **Kimlik doğrulama:** `scrypt` ile hash'lenmiş şifreler, JWT, müşteri/admin rolleri, giriş denemelerine hız sınırı
+- **Güvenlik detayları:** Fiyat istemciden alınmaz; başkasının siparişi için 404 döner; giriş hatası hangi alanın yanlış olduğunu söylemez; `helmet` başlıkları
+- **Doğru para hesabı:** Veritabanında `NUMERIC`, uygulamada kuruş cinsinden toplama; sipariş anındaki fiyat ayrıca saklanır
+- **Katmanlı mimari:** Router → Repository arayüzü → PostgreSQL. Birim testler veritabanı olmadan, entegrasyon testleri gerçek PostgreSQL ile çalışır
+- **46 test**, her push'ta CI'da (tip kontrolü + testler + build)
+
+## 🔌 API
+
+Tüm uç noktalar `/api` altında, JSON alır ve döner. 🔒 giriş, 👑 admin gerektirir.
+
+### Kimlik
 
 | Metot | Yol | Açıklama |
 |---|---|---|
-| `GET` | `/health` | Sağlık kontrolü |
-| `GET` | `/api/kitaplar?arama=` | Kitapları listeler (isim/yazara göre arama) |
-| `GET` | `/api/kitaplar/:id` | Tek kitap |
-| `POST` | `/api/kitaplar` | Yeni kitap ekler |
-| `PATCH` | `/api/kitaplar/:id` | Kitabı kısmen günceller |
-| `DELETE` | `/api/kitaplar/:id` | Kitabı siler |
-| `POST` | `/api/kitaplar/:id/satis` | Satış yapar ve stoktan düşer (`{ "adet": 2 }`, varsayılan 1) |
+| `POST` | `/auth/kayit` | Müşteri hesabı açar → `{ kullanici, token }` |
+| `POST` | `/auth/giris` | Giriş → `{ kullanici, token }` |
+| `GET` 🔒 | `/auth/ben` | Giriş yapmış kullanıcı |
 
-### Örnek
+Token, `Authorization: Bearer <token>` başlığıyla gönderilir.
+
+### Kitaplar
+
+| Metot | Yol | Açıklama |
+|---|---|---|
+| `GET` | `/kitaplar?arama=&sayfa=1&limit=20` | Sayfalı liste → `{ veriler, toplam, sayfa, limit }` |
+| `GET` | `/kitaplar/:id` | Tek kitap |
+| `POST` 👑 | `/kitaplar` | Kitap ekler |
+| `PATCH` 👑 | `/kitaplar/:id` | Kısmi güncelleme |
+| `DELETE` 👑 | `/kitaplar/:id` | Siler (siparişte geçiyorsa `409`) |
+
+### Siparişler
+
+| Metot | Yol | Açıklama |
+|---|---|---|
+| `POST` 🔒 | `/siparisler` | `{ "kalemler": [{ "kitapId": 1, "adet": 2 }] }` |
+| `GET` 🔒 | `/siparisler` | Müşteri kendi siparişlerini, admin hepsini görür |
+| `GET` 🔒 | `/siparisler/:id` | Tek sipariş (başkasınınsa `404`) |
+| `PATCH` 👑 | `/siparisler/:id/durum` | `hazirlaniyor` · `kargoda` · `teslim_edildi` · `iptal` |
+
+### Örnek akış
 
 ```bash
-curl -X POST http://localhost:3000/api/kitaplar \
-  -H "Content-Type: application/json" \
-  -d '{"isim": "Masumiyet Müzesi", "yazar": "Orhan Pamuk", "fiyat": 250, "stok": 4}'
+# Kayıt ol ve token'ı al
+TOKEN=$(curl -s -X POST localhost:3000/api/auth/kayit -H 'Content-Type: application/json' \
+  -d '{"ad":"Ayşe","eposta":"ayse@ornek.com","sifre":"guclu-sifre-1"}' | jq -r .token)
+
+# Sipariş ver
+curl -X POST localhost:3000/api/siparisler -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"kalemler":[{"kitapId":1,"adet":2}]}'
 ```
 
-```json
-{ "id": 5, "isim": "Masumiyet Müzesi", "yazar": "Orhan Pamuk", "fiyat": 250, "stok": 4 }
-```
+### Hatalar
 
-Hata yanıtları:
+Hepsi aynı biçimde: `{ "hata": "…", "detaylar"?: [{ "alan": "…", "mesaj": "…" }] }`
 
-| Durum | Ne zaman | Örnek gövde |
-|---|---|---|
-| `400` | Geçersiz veri | `{ "hata": "Geçersiz istek", "detaylar": [{ "alan": "fiyat", "mesaj": "Fiyat negatif olamaz" }] }` |
-| `404` | Kitap yok | `{ "hata": "Kitap bulunamadı" }` |
-| `409` | Stok yetersiz | `{ "hata": "Yetersiz stok" }` |
+| Kod | Ne zaman |
+|---|---|
+| `400` | Doğrulama hatası (alan bazlı detaylarla) |
+| `401` | Giriş yok / token geçersiz |
+| `403` | Yetki yok |
+| `404` | Kayıt yok |
+| `409` | E-posta kayıtlı, stok yetersiz, kitap siparişte geçiyor |
+| `429` | Çok fazla giriş denemesi |
 
 ## 🚀 Kurulum
 
@@ -58,49 +85,44 @@ Gereksinimler: Node.js 22+, Docker (veya yerel PostgreSQL)
 git clone https://github.com/kaanyildiz14/kitap-magazasi-api.git
 cd kitap-magazasi-api
 npm install
-cp .env.example .env
-docker compose up -d      # PostgreSQL'i başlatır, tabloyu ve örnek verileri oluşturur
-npm run dev               # http://localhost:3000
+cp apps/api/.env.example apps/api/.env
+docker compose up -d                 # PostgreSQL + şema + örnek kitaplar
+npm run dev:api                      # http://localhost:3000
+
+# İlk admin kullanıcısı (API'de admin oluşturan bir uç nokta yok, bilerek)
+npm run admin -w apps/api -- "Ad Soyad" admin@ornek.com "guclu-bir-sifre"
 ```
 
-Yerel PostgreSQL kullanıyorsan `.env` içindeki `DATABASE_URL`'i düzenle ve şemayı yükle:
+## 🧪 Testler
 
 ```bash
-psql "$DATABASE_URL" -f db/schema.sql
+npm test                             # birim + API testleri (veritabanı gerekmez)
+
+# Gerçek PostgreSQL'e karşı entegrasyon testleri (veritabanını SIFIRLAR, ayrı bir DB kullan)
+createdb kitap_test
+TEST_DATABASE_URL=postgres://localhost/kitap_test npm test
 ```
 
-## 📜 Komutlar
-
-| Komut | Açıklama |
-|---|---|
-| `npm run dev` | Geliştirme sunucusu (otomatik yeniden başlatma) |
-| `npm test` | Testleri çalıştırır (Vitest + Supertest) |
-| `npm run typecheck` | TypeScript tip kontrolü |
-| `npm run build` | `dist/` klasörüne derler |
-| `npm start` | Derlenmiş sürümü çalıştırır |
-
-## 📁 Proje Yapısı
+## 📁 Yapı
 
 ```
-src/
-├── server.ts                  # Giriş noktası: env, veritabanı bağlantısı
-├── app.ts                     # Express uygulaması (testlerde de kullanılır)
-├── kitaplar/
-│   ├── kitap.ts               # Tipler ve Zod şemaları
-│   ├── kitapRepository.ts     # Repository arayüzü + PostgreSQL uygulaması
-│   └── kitapRouter.ts         # HTTP uç noktaları
-└── middleware/
-    └── hataYakalayici.ts      # Merkezi hata yönetimi
-tests/                         # Bellek içi repository ile API testleri
-db/schema.sql                  # Tablo ve örnek veriler
+apps/api/
+├── src/
+│   ├── app.ts                 # Uygulama kurulumu (bağımlılıklar dışarıdan verilir)
+│   ├── server.ts              # Giriş noktası: config, PostgreSQL, sunucu
+│   ├── config.ts              # Ortam değişkenleri doğrulaması
+│   ├── auth/                  # Şifre, JWT, yetki middleware'i, /auth uç noktaları
+│   ├── kitaplar/              # Kitap modeli, repository, router
+│   ├── siparisler/            # Transaction'lı sipariş oluşturma
+│   ├── middleware/            # Merkezi hata yönetimi
+│   └── scripts/               # Admin oluşturma komutu
+└── tests/
+    ├── bellek/                # Testler için bellek içi repository'ler
+    ├── entegrasyon/           # Gerçek PostgreSQL testleri
+    └── *.test.ts
+db/schema.sql                  # Tablolar, kısıtlar, örnek veriler
+docs/mimari.md                 # Mimari kararlar ve yol haritası
 ```
-
-## 🗺️ Yol Haritası
-
-- [ ] JWT ile kimlik doğrulama (admin / müşteri rolleri)
-- [ ] Sayfalama
-- [ ] OpenAPI / Swagger dokümantasyonu
-- [ ] Sipariş geçmişi tablosu
 
 ## 📄 Lisans
 
