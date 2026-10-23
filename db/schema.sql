@@ -49,6 +49,18 @@ SELECT * FROM (VALUES
   ('Masumiyet Müzesi', 'Orhan Pamuk', 260.00, 6),
   ('Aylak Adam', 'Yusuf Atılgan', 120.00, 9),
   ('Çalıkuşu', 'Reşat Nuri Güntekin', 175.00, 4),
-  ('Yaban', 'Yakup Kadri Karaosmanoğlu', 140.00, 7)
+  ('Yaban', 'Yakup Kadri Karaosmanoğlu', 140.00, 7),
+  ('Kuyucaklı Yusuf', 'Sabahattin Ali', 150.00, 10),
+  ('Huzur', 'Ahmet Hamdi Tanpınar', 230.00, 3),
+  ('Tehlikeli Oyunlar', 'Oğuz Atay', 290.00, 2),
+  ('Benim Adım Kırmızı', 'Orhan Pamuk', 275.00, 5),
+  ('Anayurt Oteli', 'Yusuf Atılgan', 115.00, 6),
+  ('Kiralık Konak', 'Yakup Kadri Karaosmanoğlu', 135.00, 4),
+  ('Sinekli Bakkal', 'Halide Edib Adıvar', 190.00, 7),
+  ('Aşk-ı Memnu', 'Halit Ziya Uşaklıgil', 220.00, 5),
+  ('Kuyruklu Yıldız Altında Bir İzdivaç', 'Hüseyin Rahmi Gürpınar', 160.00, 3),
+  ('Bereketli Topraklar Üzerinde', 'Orhan Kemal', 180.00, 8),
+  ('Ölmeye Yatmak', 'Adalet Ağaoğlu', 240.00, 2),
+  ('Kırmızı Saçlı Kadın', 'Orhan Pamuk', 195.00, 9)
 ) AS v(isim, yazar, fiyat, stok)
 WHERE NOT EXISTS (SELECT 1 FROM kitaplar);
