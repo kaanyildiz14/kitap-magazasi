@@ -1,23 +1,40 @@
-# 📚 Kitap Mağazası
+# 📚 Raf: Kitap Mağazası
 
 [![CI](https://github.com/kaanyildiz14/kitap-magazasi/actions/workflows/ci.yml/badge.svg)](https://github.com/kaanyildiz14/kitap-magazasi/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Express](https://img.shields.io/badge/Express_5-000000?logo=express&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js_16-000000?logo=nextdotjs&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind_4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Lisans](https://img.shields.io/badge/lisans-MIT-green)
 
-Bir kitap mağazasının üyelik, katalog, stok ve sipariş süreçlerini yöneten full-stack uygulama. Bu repo şu an **REST API**'yi içeriyor; Next.js arayüzü yolda ([yol haritası](docs/mimari.md#aşamalar)).
+Bir kitap mağazasının üyelik, katalog, sepet, sipariş ve yönetim süreçlerini uçtan uca kapsayan full-stack uygulama: **Express + PostgreSQL** REST API ve **Next.js** arayüz.
+
+![Raf ana sayfası: kitaplar raftaki sırtlarıyla dizili](docs/ekran/ana-sayfa.png)
 
 > Projenin neden böyle kurulduğunu, her kararın gerekçesini ve alternatiflerini **[docs/mimari.md](docs/mimari.md)** anlatıyor.
 
 ## ✨ Öne Çıkanlar
+
+**Arayüz (`apps/web`)**
+- **Raf:** Kitaplar ana sayfada sırtlarıyla dizili; her kitabın cildi adından türetiliyor, aynı kitap her yerde aynı görünüyor
+- **BFF mimarisi:** Tarayıcı API'ye hiç gitmez; token `httpOnly` çerezde, JavaScript ile okunamaz
+- Katalog, arama, sayfalama · sepet (giriş yapmadan da çalışır) · sipariş geçmişi · admin paneli (kitap ekle/düzenle/sil, sipariş durumları)
+- Next.js 16 Cache Components: sabit iskelet anında, kişiye özel içerik arkasından akar
+- Mobil uyumlu, klavyeyle gezilebilir, `prefers-reduced-motion` desteği
+
+**API (`apps/api`)**
 
 - **Güvenli sipariş:** Çok kalemli sipariş tek transaction'da işlenir; satırlar `SELECT … FOR UPDATE` ile kilitlenir. Aynı anda gelen 20 siparişin stoğu eksiye düşürmediği gerçek PostgreSQL'e karşı test ediliyor.
 - **Kimlik doğrulama:** `scrypt` ile hash'lenmiş şifreler, JWT, müşteri/admin rolleri, giriş denemelerine hız sınırı
 - **Güvenlik detayları:** Fiyat istemciden alınmaz; başkasının siparişi için 404 döner; giriş hatası hangi alanın yanlış olduğunu söylemez; `helmet` başlıkları
 - **Doğru para hesabı:** Veritabanında `NUMERIC`, uygulamada kuruş cinsinden toplama; sipariş anındaki fiyat ayrıca saklanır
 - **Katmanlı mimari:** Router → Repository arayüzü → PostgreSQL. Birim testler veritabanı olmadan, entegrasyon testleri gerçek PostgreSQL ile çalışır
-- **46 test**, her push'ta CI'da (tip kontrolü + testler + build)
+- **59 test** (API 46 + arayüz 13), her push'ta CI'da: tip kontrolü, lint, testler, build
+
+| Kitap sayfası | |
+|---|---|
+| ![Kitap detay sayfası](docs/ekran/kitap.png) | Sepet, sipariş ve yönetim akışları [yerelde çalıştırılarak](#-kurulum) denenebilir. |
 
 ## 🔌 API
 
@@ -87,16 +104,19 @@ cd kitap-magazasi
 npm install
 cp apps/api/.env.example apps/api/.env
 docker compose up -d                 # PostgreSQL + şema + örnek kitaplar
-npm run dev:api                      # http://localhost:3000
+npm run dev:api                      # API:     http://localhost:3000
+npm run dev:web                      # Arayüz:  http://localhost:3001  (ayrı bir terminalde)
 
 # İlk admin kullanıcısı (API'de admin oluşturan bir uç nokta yok, bilerek)
 npm run admin -w apps/api -- "Ad Soyad" admin@ornek.com "guclu-bir-sifre"
 ```
 
+Admin olarak giriş yapınca menüde **Yönetim** bağlantısı görünür.
+
 ## 🧪 Testler
 
 ```bash
-npm test                             # birim + API testleri (veritabanı gerekmez)
+npm test                             # API + arayüz testleri (veritabanı gerekmez)
 
 # Gerçek PostgreSQL'e karşı entegrasyon testleri (veritabanını SIFIRLAR, ayrı bir DB kullan)
 createdb kitap_test
@@ -106,6 +126,12 @@ TEST_DATABASE_URL=postgres://localhost/kitap_test npm test
 ## 📁 Yapı
 
 ```
+apps/web/src/
+├── app/                       # Sayfalar: /, /kitap/[id], /sepet, /giris, /kayit, /siparisler, /admin
+├── actions/                   # Server Action'lar: giriş, sipariş, admin işlemleri
+├── components/                # Raf, KitapKapagi, SepetProvider, formlar…
+├── lib/                       # API istemcisi, oturum (httpOnly çerez), sepet mantığı, cilt üretici
+└── proxy.ts                   # Girişsiz istekleri giriş sayfasına yönlendirir
 apps/api/
 ├── src/
 │   ├── app.ts                 # Uygulama kurulumu (bağımlılıklar dışarıdan verilir)

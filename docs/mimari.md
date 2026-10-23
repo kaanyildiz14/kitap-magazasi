@@ -18,7 +18,7 @@ Gerçek bir kitap mağazasının temel akışlarını uçtan uca gösteren, canl
 kitap-magazasi/
 ├── apps/
 │   ├── api/        # Express 5 + TypeScript + PostgreSQL  (REST API)
-│   └── web/        # Next.js + Tailwind                    (arayüz, Aşama 2)
+│   └── web/        # Next.js 16 + Tailwind 4               (arayüz)
 ├── docs/           # Bu doküman
 ├── docker-compose.yml
 └── package.json    # npm workspaces: tek "npm install" ile hepsi
@@ -31,7 +31,7 @@ kitap-magazasi/
 | Aşama | İçerik | Durum |
 |---|---|---|
 | 1 | Monorepo yapısı, üyelik/giriş (JWT), roller, siparişler, sayfalama | ✅ |
-| 2 | Next.js arayüz: katalog, arama, sepet, giriş, siparişlerim, admin paneli | ⏳ |
+| 2 | Next.js arayüz: katalog, arama, sepet, giriş, siparişlerim, admin paneli | ✅ |
 | 3 | Canlı yayın: `kitap.uranusyazilim.com` (API + veritabanı + arayüz) | ⏳ |
 | 4 | OpenAPI dokümantasyonu, uçtan uca testler (Playwright) | ⏳ |
 
@@ -100,3 +100,48 @@ Tüm hatalar aynı biçimde döner: `{ "hata": "…", "detaylar"?: […] }`
 | Zod | Tek şemadan hem doğrulama hem TypeScript tipi | Joi, class-validator |
 | `jose` | Standartlara uygun, bağımlılıksız, her ortamda çalışır | jsonwebtoken |
 | Vitest + Supertest | Hızlı, TypeScript'i doğrudan çalıştırır | Jest |
+
+## Arayüz (apps/web)
+
+### BFF: tarayıcı API'ye hiç doğrudan gitmez
+
+```
+Tarayıcı ──(çerez)──▶ Next.js sunucusu ──(Bearer token)──▶ Express API ──▶ PostgreSQL
+```
+
+- **Token `httpOnly` çerezde** (`src/lib/oturum.ts`). JavaScript bu çerezi okuyamaz; sitede bir XSS açığı olsa bile token çalınamaz. `localStorage`'da saklasaydık okunabilirdi.
+- **`sameSite: lax`**: başka bir sitedeki form, kullanıcının çereziyle bizim sitemize istek gönderemez (CSRF koruması).
+- **CORS gerekmez**: tarayıcı yalnızca kendi sitesiyle (Next.js) konuşur; API'ye istekleri sunucu atar.
+- Veri okuma: Server Component'ler `src/lib/api.ts` üzerinden; veri değiştirme: **Server Action**'lar (`src/actions/`).
+
+### Yetki katmanları
+
+| Katman | Ne yapar | Güvenlik sınırı mı? |
+|---|---|---|
+| `proxy.ts` | Çerez hiç yoksa giriş sayfasına yönlendirir | Hayır, sadece hızlı yönlendirme |
+| `sayfaKorumasi.ts` | Kullanıcıyı API'den doğrular; admin değilse 404 | Hayır, arayüz kolaylığı |
+| **API** | Her istekte token ve rolü kontrol eder | **Evet** |
+
+Arayüzdeki kontroller atlatılsa bile (ör. biri doğrudan Server Action çağırsa) API yetkisiz isteği reddeder.
+
+### Next.js 16: Cache Components
+
+Bu sürümde sayfalar varsayılan olarak **önceden render edilir**; çerez, URL parametresi ya da canlı veri okuyan her bileşen `<Suspense>` içinde olmalıdır. Böylece sayfanın sabit iskeleti (başlık, menü) anında gelir, kişiye özel kısımlar arkasından akar (`◐ Partial Prerender`).
+
+### Sepet
+
+- Sepet tarayıcıda (`localStorage`) tutulur; giriş yapmadan da kullanılabilir, giriş sonrası kaybolmaz.
+- React'e `useSyncExternalStore` ile bağlanır: localStorage React'in dışında bir veri kaynağıdır; bu hook sunucuda "boş", tarayıcıda gerçek sepeti gösterir ve diğer sekmelerdeki değişiklikleri de yakalar.
+- localStorage'daki veriye güvenilmez (`sepetiOku` bozuk kayıtları atar). Sepetteki fiyat yalnızca gösterim içindir; **siparişte fiyatı ve stoğu API kendi veritabanından kontrol eder**.
+
+### Tasarım
+
+"Raf": kitaplar ana sayfada raftaki sırtlarıyla dizilir. Kitap görseli olmadığı için her kitabın cildi (renk, sırt kalınlığı, boy) adından türetilir (`src/lib/kapak.ts`); aynı kitap her yerde aynı görünür.
+
+| Öğe | Seçim | Neden |
+|---|---|---|
+| Başlık yazı tipi | Literata | Uzun metin okuma için tasarlanmış bir kitap yazı tipi |
+| Arayüz yazı tipi | Atkinson Hyperlegible | Okunabilirlik odaklı; 0/O, 1/l gibi karakterleri ayırt eder (fiyatlar için önemli) |
+| Renkler | Soğuk kağıt zemin, lacivert mürekkep, şişe yeşili eylemler | Kitap ciltlerinin renkleri öne çıksın |
+
+Erişilebilirlik: klavye odağı görünür, `prefers-reduced-motion` açıksa animasyon yok, formlarda hata mesajları alanlarla `aria-describedby` ile bağlı.
