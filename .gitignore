@@ -1,3 +1,4 @@
-node_modules
-distactions-runner/
+node_modules/
+dist/
+.env
 actions-runner/
