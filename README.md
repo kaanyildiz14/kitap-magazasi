@@ -1,6 +1,6 @@
 # 📚 Kitap Mağazası
 
-[![CI](https://github.com/kaanyildiz14/kitap-magazasi-api/actions/workflows/ci.yml/badge.svg)](https://github.com/kaanyildiz14/kitap-magazasi-api/actions/workflows/ci.yml)
+[![CI](https://github.com/kaanyildiz14/kitap-magazasi/actions/workflows/ci.yml/badge.svg)](https://github.com/kaanyildiz14/kitap-magazasi/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Express](https://img.shields.io/badge/Express_5-000000?logo=express&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
@@ -82,8 +82,8 @@ Hepsi aynı biçimde: `{ "hata": "…", "detaylar"?: [{ "alan": "…", "mesaj": 
 Gereksinimler: Node.js 22+, Docker (veya yerel PostgreSQL)
 
 ```bash
-git clone https://github.com/kaanyildiz14/kitap-magazasi-api.git
-cd kitap-magazasi-api
+git clone https://github.com/kaanyildiz14/kitap-magazasi.git
+cd kitap-magazasi
 npm install
 cp apps/api/.env.example apps/api/.env
 docker compose up -d                 # PostgreSQL + şema + örnek kitaplar
